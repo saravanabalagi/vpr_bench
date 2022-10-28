@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+results/
+variation_quantified_datasets/
+VPR_Techniques/**/*.caffemodel
+VPR_Techniques/**/checkpoints/
+VPR_Techniques/**/model/
+VPR_Techniques/Custom_*
+batch*.sh
