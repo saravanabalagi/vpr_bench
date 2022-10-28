@@ -40,6 +40,9 @@ def selective_import(VPR_technique):
     elif (VPR_technique=='HOG'):
         from VPR_Techniques.HOG_VPR import compute_map_features, compute_query_desc, perform_VPR
 
+    elif (VPR_technique=='Custom_NPZ'):
+        from VPR_Techniques.Custom_NPZ.Custom_NPZ import compute_map_features, compute_query_desc, perform_VPR
+
     else:
         sys.exit("Method {} not supported. Please check if letters' case match exactly.".format(VPR_technique))
    

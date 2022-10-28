@@ -24,10 +24,16 @@ def evaluate_vpr_techniques(dataset_dir,precomputed_directory,techniques, save_d
         ref_dir=dataset_dir+'ref/' #Creating path of ref directory as per the template proposed in our work.
     
         ref_images_list=[]    
-        ref_images_names=[os.path.basename(x) for x in glob.glob(ref_dir+'*.jpg')]  
-        query_images_names=[os.path.basename(x) for x in glob.glob(query_dir+'*.jpg')]
+        ref_images_names_full=glob.glob(ref_dir+'*.jpg')
+        query_images_names_full=glob.glob(query_dir+'*.jpg')
+        ref_images_names=[os.path.basename(x) for x in ref_images_names_full]  
+        query_images_names=[os.path.basename(x) for x in query_images_names_full]
+
+        # sort images by name
+        ref_images_names=sorted(ref_images_names,key=lambda x:int(x.split(".")[0]))
+        query_images_names=sorted(query_images_names,key=lambda x:int(x.split(".")[0]))
     
-        for image_name in sorted(ref_images_names,key=lambda x:int(x.split(".")[0])):  #Reading all the reference images into a list
+        for image_name in ref_images_names:  #Reading all the reference images into a list
             print('Reading Image: ' + ref_dir+image_name)
             ref_image=cv2.imread(ref_dir+image_name)
             if (ref_image is not None):
@@ -63,10 +69,15 @@ def evaluate_vpr_techniques(dataset_dir,precomputed_directory,techniques, save_d
         print(vpr_tech)
         
         if (vpr_tech.find('Precomputed')==-1):
-            ref_images_desc= compute_image_descriptors(ref_images_list, vpr_tech) #Compute descriptors of all reference images for the VPR technique.
+            if vpr_tech.startswith('Custom_'):
+                datasets_root = os.path.dirname(os.path.dirname(dataset_dir))
+                ref_images_names_rel = [os.path.relpath(x, datasets_root) for x in ref_images_names_full]
+                ref_images_desc = compute_image_descriptors(ref_images_names_rel, vpr_tech)
+            else:
+                ref_images_desc = compute_image_descriptors(ref_images_list, vpr_tech) #Compute descriptors of all reference images for the VPR technique.
     
             itr=0
-            for image_name in sorted(query_images_names,key=lambda x:int(x.split(".")[0])):     #Iterating over each query image instead of loading them all at once, to save RAM space
+            for image_name in query_images_names:     #Iterating over each query image instead of loading them all at once, to save RAM space
                 query_image=cv2.imread(query_dir+image_name)
                 if (query_image is not None):
                     
@@ -78,8 +89,11 @@ def evaluate_vpr_techniques(dataset_dir,precomputed_directory,techniques, save_d
                     # resize image
                     query_image = cv2.resize(query_image, dim, interpolation = cv2.INTER_AREA)
                     #####################################################
-    
-                    matched, matching_index, score, t_e, t_m, all_retrievedindices_scores_perquery  = place_match(query_image,ref_images_desc, vpr_tech)  #Matches a given query image with all reference images.
+                    if vpr_tech.startswith('Custom_'):
+                        query_image_name_rel = os.path.relpath(os.path.join(query_dir, image_name), datasets_root)
+                        matched, matching_index, score, t_e, t_m, all_retrievedindices_scores_perquery  = place_match(query_image_name_rel,ref_images_desc, vpr_tech)  #Matches a given query image with all reference images.
+                    else:
+                        matched, matching_index, score, t_e, t_m, all_retrievedindices_scores_perquery  = place_match(query_image,ref_images_desc, vpr_tech)  #Matches a given query image with all reference images.
                     
                     query_indices_list.append(itr)
                     matching_indices_list.append(matching_index)
@@ -107,15 +121,15 @@ def evaluate_vpr_techniques(dataset_dir,precomputed_directory,techniques, save_d
             if (save_descriptors==1):
                 cwd=os.getcwd()
                 
-                if not os.path.exists(cwd+'/'+precomputed_directory+vpr_tech):
-                    os.makedirs(cwd+'/'+precomputed_directory+vpr_tech)
-                    np.save(cwd+'/'+precomputed_directory+vpr_tech+'/'+'precomputed_data_corrected.npy',precomputed_data)
+                if not os.path.exists(precomputed_directory+vpr_tech):
+                    os.makedirs(precomputed_directory+vpr_tech)
+                    np.save(precomputed_directory+vpr_tech+'/'+'precomputed_data_corrected.npy',precomputed_data)
                 else:
-                    np.save(cwd+'/'+precomputed_directory+vpr_tech+'/'+'precomputed_data_corrected.npy',precomputed_data)
+                    np.save(precomputed_directory+vpr_tech+'/'+'precomputed_data_corrected.npy',precomputed_data)
 
         else:
             cwd=os.getcwd()
-            precomputed_data=np.load(cwd+'/'+precomputed_directory+vpr_tech.replace("_Precomputed","")+'/'+'precomputed_data_corrected.npy',allow_pickle=True )
+            precomputed_data=np.load(precomputed_directory+vpr_tech.replace("_Precomputed","")+'/'+'precomputed_data_corrected.npy',allow_pickle=True )
             print(precomputed_data.shape)
             
             query_indices_dict[vpr_tech]=precomputed_data[0]        
